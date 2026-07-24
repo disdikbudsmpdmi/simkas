@@ -315,6 +315,33 @@
     box-shadow: 0 4px 12px rgba(37,99,235,0.3);
   }
 
+  /* Pagination */
+  .tx-pagesize-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 14px 10px; gap: 8px;
+  }
+  .tx-pagesize-row .tps-label { font-size: 11px; color: var(--text3); font-weight: 600; }
+  .tx-pagesize-select {
+    font-size: 12px; font-weight: 700; color: var(--primary-mid);
+    background: var(--primary-xlight); border: 1.5px solid var(--primary-light);
+    border-radius: 10px; padding: 6px 10px; cursor: pointer;
+  }
+  .tx-pagination {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 14px 20px; gap: 10px;
+  }
+  .tx-page-info { font-size: 11px; color: var(--text3); font-weight: 600; flex: 1; }
+  .tx-page-btns { display: flex; gap: 6px; }
+  .tx-page-btn {
+    min-width: 34px; height: 34px; padding: 0 10px; border-radius: 10px;
+    border: 1.5px solid var(--border); background: var(--surface); color: var(--text2);
+    font-size: 12px; font-weight: 700; cursor: pointer; transition: all 0.15s;
+  }
+  .tx-page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .tx-page-btn.active {
+    background: var(--primary-mid); border-color: var(--primary-mid); color: #fff;
+  }
+
   /* FAB */
   .fab {
     position: fixed; bottom: calc(var(--nav-h) + 16px); right: 18px;
@@ -818,16 +845,28 @@
       </div>
       <div class="tx-search-wrap">
         <span class="ts-icon">🔍</span>
-        <input type="text" class="tx-search-input" id="txSearchInput" placeholder="Cari nama atau keterangan..." oninput="renderTransactions()">
+        <input type="text" class="tx-search-input" id="txSearchInput" placeholder="Cari nama atau keterangan..." oninput="txCurrentPage=1; renderTransactions()">
       </div>
       <div class="filter-bar" id="txFilterBar">
         <div class="filter-chip active" data-filter="">Semua</div>
         <div class="filter-chip" data-filter="masuk">💚 Masuk</div>
         <div class="filter-chip" data-filter="keluar">❤️ Keluar</div>
       </div>
+      <div class="tx-pagesize-row">
+        <span class="tps-label">Urutan: Januari → Desember</span>
+        <div style="display:flex; align-items:center; gap:6px;">
+          <span class="tps-label">Tampilkan:</span>
+          <select class="tx-pagesize-select" id="txPageSize" onchange="onTxPageSizeChange()">
+            <option value="10">10</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+          </select>
+        </div>
+      </div>
       <div class="tx-list" id="txList">
         <div class="empty-state"><div class="es-icon">📭</div><p>Memuat data...</p></div>
       </div>
+      <div class="tx-pagination" id="txPagination"></div>
       <div class="spacer"></div>
     </div>
 
@@ -1295,6 +1334,18 @@ let pgEditMode = false;
 let txJenis = 'masuk';
 let currentScreen = 'beranda';
 let txFilterActive = '';
+let txCurrentPage = 1;
+let txPageSize = 10;
+const MONTH_ORDER = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+function monthIndex(bulan) {
+  const i = MONTH_ORDER.indexOf((bulan || '').trim());
+  return i === -1 ? 999 : i; // bulan tak dikenal ditaruh di akhir
+}
+function parseTglForSort(tgl) {
+  // format tanggal: dd-MM-yyyy
+  const [d, m, y] = (tgl || '').split('-').map(Number);
+  return new Date(y || 0, (m || 1) - 1, d || 1).getTime();
+}
 
 // Logo state
 let logoData = { type: 'emoji', value: '💼' }; // type: 'emoji' | 'image', value: emoji char or dataURL
@@ -1535,15 +1586,32 @@ function renderTransactions() {
       if (!matchNama && !matchKet) return false;
     }
     return true;
-  }).reverse();
+  }).sort((a, b) => {
+    // Urutkan berurutan Januari → Desember, lalu berdasarkan tanggal (lama → baru) dalam bulan yang sama
+    const mi = monthIndex(a.bulan) - monthIndex(b.bulan);
+    if (mi !== 0) return mi;
+    return parseTglForSort(a.tanggal) - parseTglForSort(b.tanggal);
+  });
 
   const el = document.getElementById('txList');
+  const pagEl = document.getElementById('txPagination');
+
   if (!filtered.length) {
     el.innerHTML = '<div class="empty-state"><div class="es-icon">📭</div><p>Tidak ada transaksi</p></div>';
+    pagEl.innerHTML = '';
     return;
   }
 
-  el.innerHTML = filtered.map(t => {
+  // ── Pagination ──
+  const totalRows = filtered.length;
+  const totalPages = Math.max(1, Math.ceil(totalRows / txPageSize));
+  if (txCurrentPage > totalPages) txCurrentPage = totalPages;
+  if (txCurrentPage < 1) txCurrentPage = 1;
+
+  const startIdx = (txCurrentPage - 1) * txPageSize;
+  const pageItems = filtered.slice(startIdx, startIdx + txPageSize);
+
+  el.innerHTML = pageItems.map(t => {
     const isMasuk = t.masuk > 0;
     const amt = isMasuk ? t.masuk : t.keluar;
     const actionsHtml = isAdmin ? `
@@ -1565,6 +1633,45 @@ function renderTransactions() {
       </div>
       ${actionsHtml}`;
   }).join('');
+
+  renderTxPagination(totalRows, totalPages);
+}
+
+function renderTxPagination(totalRows, totalPages) {
+  const pagEl = document.getElementById('txPagination');
+  const startShown = (txCurrentPage - 1) * txPageSize + 1;
+  const endShown = Math.min(txCurrentPage * txPageSize, totalRows);
+
+  // Tampilkan maksimal 5 tombol angka halaman, digeser mengikuti halaman aktif
+  let pages = [];
+  let pStart = Math.max(1, txCurrentPage - 2);
+  let pEnd = Math.min(totalPages, pStart + 4);
+  pStart = Math.max(1, pEnd - 4);
+  for (let p = pStart; p <= pEnd; p++) pages.push(p);
+
+  const pageBtns = pages.map(p => `
+    <button class="tx-page-btn ${p === txCurrentPage ? 'active' : ''}" onclick="goToTxPage(${p})">${p}</button>
+  `).join('');
+
+  pagEl.innerHTML = `
+    <div class="tx-page-info">${startShown}-${endShown} dari ${totalRows} data</div>
+    <div class="tx-page-btns">
+      <button class="tx-page-btn" ${txCurrentPage <= 1 ? 'disabled' : ''} onclick="goToTxPage(${txCurrentPage - 1})">‹</button>
+      ${pageBtns}
+      <button class="tx-page-btn" ${txCurrentPage >= totalPages ? 'disabled' : ''} onclick="goToTxPage(${txCurrentPage + 1})">›</button>
+    </div>`;
+}
+
+function goToTxPage(p) {
+  txCurrentPage = p;
+  renderTransactions();
+  document.getElementById('txList').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function onTxPageSizeChange() {
+  txPageSize = Number(document.getElementById('txPageSize').value);
+  txCurrentPage = 1;
+  renderTransactions();
 }
 
 document.getElementById('txFilterBar').addEventListener('click', e => {
@@ -1573,6 +1680,7 @@ document.getElementById('txFilterBar').addEventListener('click', e => {
   document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
   chip.classList.add('active');
   txFilterActive = chip.dataset.filter;
+  txCurrentPage = 1;
   renderTransactions();
 });
 
