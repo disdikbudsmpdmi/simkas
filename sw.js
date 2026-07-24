@@ -5,7 +5,7 @@
  * karena diambil live dari Apps Script + Google Sheets.
  */
 
-const CACHE_NAME = 'simkas-cache-v1';
+const CACHE_NAME = 'simkas-cache-v4';
 const APP_SHELL = [
   './',
   './index.html',

@@ -54,7 +54,7 @@
     --radius-xs: 10px;
     --nav-h: 72px;
     --header-h: 64px;
-    --status-h: 28px;
+    --sidebar-w: 250px;
     --admin-color: #d97706;
     --user-color: #059669;
   }
@@ -70,18 +70,7 @@
     -webkit-font-smoothing: antialiased;
   }
 
-  /* ── STATUS BAR ── */
-  .status-bar {
-    height: var(--status-h);
-    background: var(--primary);
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 0 18px;
-    font-size: 11px; font-weight: 700;
-    color: rgba(255,255,255,0.9);
-    letter-spacing: 0.3px;
-    position: sticky; top: 0; z-index: 200;
-  }
-  .status-bar .sb-icons { display: flex; align-items: center; gap: 5px; font-size: 12px; }
+  /* (Status bar palsu ala HP sudah dihapus) */
 
   /* ── TOP HEADER ── */
   .app-header {
@@ -90,7 +79,7 @@
     display: flex; align-items: center; justify-content: space-between;
     padding: 0 16px;
     position: sticky;
-    top: var(--status-h);
+    top: 0;
     z-index: 150;
     box-shadow: var(--shadow-blue);
   }
@@ -274,26 +263,23 @@
   .tx-amt.keluar { color: var(--red); }
   .tx-date { font-size: 10px; color: var(--text3); margin-top: 2px; font-weight: 500; }
 
-  /* Admin actions row */
-  .tx-actions {
-    display: flex; gap: 6px; padding: 0 14px 2px;
-    margin-top: -4px;
-  }
-  .tx-action-btn {
-    flex: 1; padding: 7px 0; border: none; cursor: pointer; border-radius: var(--radius-xs);
-    font-size: 11px; font-weight: 700; font-family: inherit;
-    display: flex; align-items: center; justify-content: center; gap: 4px;
+  /* Inline icon action buttons (sejajar dengan baris transaksi) */
+  .tx-icon-actions { display: flex; gap: 6px; flex-shrink: 0; margin-left: 2px; }
+  .tx-icon-btn {
+    width: 32px; height: 32px; border: none; cursor: pointer; border-radius: var(--radius-xs);
+    font-size: 14px; font-family: inherit;
+    display: flex; align-items: center; justify-content: center;
     transition: all 0.15s;
   }
-  .tx-action-btn:active { transform: scale(0.96); }
-  .tx-action-btn.edit { background: var(--primary-xlight); color: var(--primary-mid); }
-  .tx-action-btn.del { background: var(--red-light); color: var(--red); }
+  .tx-icon-btn:active { transform: scale(0.88); }
+  .tx-icon-btn.edit { background: var(--primary-xlight); color: var(--primary-mid); }
+  .tx-icon-btn.del { background: var(--red-light); color: var(--red); }
 
   /* Screen Header */
   .scr-header {
     background: var(--surface); padding: 16px 16px 12px;
     border-bottom: 1px solid var(--border2);
-    position: sticky; top: calc(var(--status-h) + var(--header-h)); z-index: 50;
+    position: sticky; top: var(--header-h); z-index: 50;
   }
   .scr-header h2 { font-size: 17px; font-weight: 800; color: var(--text); }
   .scr-header p { font-size: 11px; color: var(--text3); margin-top: 2px; font-weight: 500; }
@@ -599,6 +585,62 @@
   .nav-item.active .nav-label { color: var(--primary-mid); }
   .nav-item:active .nav-icon { transform: scale(0.88); }
 
+  /* ══════════════════════════════════════════
+     HYBRID LAYOUT — DESKTOP / PC (>= 1024px)
+     Bottom-nav berubah jadi sidebar kiri, konten
+     diberi lebar maksimum agar tidak melebar penuh
+     se-layar.
+     ══════════════════════════════════════════ */
+  @media (min-width: 1024px) {
+    .app-header {
+      top: 0;
+      left: var(--sidebar-w);
+      width: calc(100% - var(--sidebar-w));
+      position: fixed;
+    }
+
+    .main {
+      margin-left: var(--sidebar-w);
+      max-width: 1180px;
+      padding: calc(var(--header-h) + 20px) 28px 32px;
+    }
+
+    .scr-header { top: var(--header-h); }
+
+    /* Sidebar (bekas bottom-nav) */
+    .bottom-nav {
+      position: fixed; top: 0; left: 0; bottom: 0; right: auto;
+      width: var(--sidebar-w); height: 100vh;
+      flex-direction: column; align-items: stretch; justify-content: flex-start;
+      gap: 4px; padding: 18px 12px;
+      border-top: none; border-right: 1px solid var(--border2);
+      box-shadow: 2px 0 24px rgba(15,23,42,0.05);
+      z-index: 400;
+    }
+    .bottom-nav::before {
+      content: '💼 SIMKAS';
+      display: block; font-size: 16px; font-weight: 800; color: var(--primary);
+      padding: 8px 12px 18px; letter-spacing: -0.3px;
+    }
+    .nav-item {
+      flex-direction: row; justify-content: flex-start; align-items: center;
+      gap: 12px; padding: 11px 12px; border-radius: var(--radius-sm);
+    }
+    .nav-item:hover { background: var(--surface2); }
+    .nav-item.active { background: var(--primary-xlight); }
+    .nav-item.active .nav-icon { transform: none; }
+    .nav-icon { width: 30px; height: 30px; font-size: 17px; flex-shrink: 0; }
+    .nav-label { font-size: 13px; }
+
+    .fab { right: 32px; bottom: 32px; }
+    .viewonly-banner { margin-left: var(--sidebar-w); padding-top: calc(var(--header-h) + 9px); }
+
+    /* Batasi lebar list & grid agar tetap enak dibaca di layar lebar */
+    .tx-list, .filter-bar, .tx-pagesize-row, .tx-pagination,
+    .summary-wrap, .qa-grid, .sec-title, .pegawai-list, .lap-wrap,
+    .settings-wrap, .dash-hero { max-width: 100%; }
+  }
+
   /* ── TOAST ── */
   .toast {
     position: fixed; top: 90px; left: 50%;
@@ -749,13 +791,6 @@
 
 <!-- ══════════ MAIN APP ══════════ -->
 <div id="app">
-
-  <!-- Status Bar -->
-  <div class="status-bar">
-    <span id="clockDisplay">09:41</span>
-    <span>SIMKAS SMP</span>
-    <span class="sb-icons">📶 🔋</span>
-  </div>
 
   <!-- App Header -->
   <div class="app-header">
@@ -1351,14 +1386,7 @@ function parseTglForSort(tgl) {
 let logoData = { type: 'emoji', value: '💼' }; // type: 'emoji' | 'image', value: emoji char or dataURL
 const LOGO_EMOJIS = ['💼','🏦','📊','💰','🏢','📋','🧾','💳','🏛️','📈','🎯','⭐','🔷','🌟','💎','🛡️'];
 
-/* ─── CLOCK ─── */
-function updateClock() {
-  const now = new Date();
-  document.getElementById('clockDisplay').textContent =
-    now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
-}
-updateClock();
-setInterval(updateClock, 30000);
+/* (Fungsi jam status-bar palsu sudah dihapus bersama elemennya) */
 
 /* ─── TOAST ─── */
 function showToast(msg, type='') {
@@ -1615,9 +1643,9 @@ function renderTransactions() {
     const isMasuk = t.masuk > 0;
     const amt = isMasuk ? t.masuk : t.keluar;
     const actionsHtml = isAdmin ? `
-      <div class="tx-actions">
-        <button class="tx-action-btn edit" onclick="editTxById('${t.id}')">✏️ Edit</button>
-        <button class="tx-action-btn del" onclick="confirmDeleteTx('${t.id}','${t.nama}')">🗑️ Hapus</button>
+      <div class="tx-icon-actions">
+        <button class="tx-icon-btn edit" onclick="event.stopPropagation(); editTxById('${t.id}')" title="Edit" aria-label="Edit">✏️</button>
+        <button class="tx-icon-btn del" onclick="event.stopPropagation(); confirmDeleteTx('${t.id}','${t.nama}')" title="Hapus" aria-label="Hapus">🗑️</button>
       </div>` : '';
     return `
       <div class="tx-item">
@@ -1630,8 +1658,8 @@ function renderTransactions() {
           <div class="tx-amt ${isMasuk?'masuk':'keluar'}">${isMasuk?'+':'-'}Rp ${fmtRp(amt)}</div>
           <div class="tx-date">${t.tanggal}</div>
         </div>
-      </div>
-      ${actionsHtml}`;
+        ${actionsHtml}
+      </div>`;
   }).join('');
 
   renderTxPagination(totalRows, totalPages);
